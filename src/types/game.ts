@@ -9,7 +9,11 @@ export type GamePhase =
   | 'RESULTS' 
   | 'FINAL_GUESS'
   | 'HOW_TO_PLAY'
-  | 'SETTINGS';
+  | 'SETTINGS'
+  | 'ONLINE_LANDING'
+  | 'ONLINE_CREATE'
+  | 'ONLINE_JOIN'
+  | 'ONLINE_LOBBY';
 
 export type GameMode = 'CLASSIC' | 'ONE_WORD' | 'QUESTIONS' | 'DESCRIPTION' | 'TWO_WORDS' | 'CUSTOM';
 export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useGameStore } from './store/gameStore'
 import { useSettingsStore } from './store/settingsStore'
+import { useOnlineStore } from './store/onlineStore'
 import { Splash } from './features/Splash'
 import { Home } from './features/Home'
 import { Setup } from './features/Setup'
@@ -13,6 +14,10 @@ import { Results } from './features/Results'
 import { FinalGuess } from './features/FinalGuess'
 import { HowToPlay } from './features/HowToPlay'
 import { Settings } from './features/Settings'
+import { OnlineLanding } from './features/OnlineLanding'
+import { OnlineCreate } from './features/OnlineCreate'
+import { OnlineJoin } from './features/OnlineJoin'
+import { OnlineLobby } from './features/OnlineLobby'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, Settings as SettingsIcon } from 'lucide-react'
 import { audioManager } from './utils/audioManager'
@@ -26,10 +31,12 @@ function TopNav() {
     audioManager.playSelect();
     
     // Non-game phases where we can just go back safely
-    if (['SETUP', 'HOW_TO_PLAY', 'SETTINGS'].includes(phase)) {
+    if (['SETUP', 'HOW_TO_PLAY', 'SETTINGS', 'ONLINE_LANDING', 'ONLINE_CREATE', 'ONLINE_JOIN'].includes(phase)) {
       if (phase === 'SETTINGS' && previousPhase && previousPhase !== 'HOME') {
         // If we came from a game phase to settings, go back to it
         setPhase(previousPhase);
+      } else if (['ONLINE_CREATE', 'ONLINE_JOIN'].includes(phase)) {
+        setPhase('ONLINE_LANDING');
       } else {
         setPhase('HOME');
       }
@@ -82,6 +89,24 @@ function App() {
     }
   }, [darkModeEnabled]);
 
+  useEffect(() => {
+    // Basic hash routing for joins
+    const handleHash = () => {
+      const hash = window.location.hash;
+      if (hash.startsWith('#/join/')) {
+        const code = hash.replace('#/join/', '').toUpperCase();
+        useOnlineStore.setState({ roomCode: code });
+        useGameStore.getState().setPhase('ONLINE_JOIN');
+        setShowSplash(false); // skip splash
+        window.history.replaceState(null, '', '/'); // clean URL
+      }
+    };
+    
+    handleHash();
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
+
   return (
     <div className="relative">
       <TopNav />
@@ -92,6 +117,10 @@ function App() {
       <div className={`flex flex-col items-center min-h-screen bg-[var(--color-surface-bg)] text-[var(--color-text-main)] p-4 ${phase !== 'HOME' ? 'pt-20' : ''} transition-colors duration-300 ${showSplash ? 'opacity-0' : 'opacity-100 transition-opacity duration-1000'}`}>
         {phase === 'HOME' && <Home />}
         {phase === 'SETUP' && <Setup />}
+        {phase === 'ONLINE_LANDING' && <OnlineLanding />}
+        {phase === 'ONLINE_CREATE' && <OnlineCreate />}
+        {phase === 'ONLINE_JOIN' && <OnlineJoin />}
+        {phase === 'ONLINE_LOBBY' && <OnlineLobby />}
         {phase === 'HOW_TO_PLAY' && <HowToPlay />}
         {phase === 'SETTINGS' && <Settings />}
         {phase === 'PLAYER_REVEAL' && <PlayerReveal />}

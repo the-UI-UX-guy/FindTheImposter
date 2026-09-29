@@ -1,40 +1,81 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { useOnlineStore } from '../store/onlineStore';
 import { audioManager } from '../utils/audioManager';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function Voting() {
   const { players, currentPlayerIndex, setPhase } = useGameStore();
+  const { isOnline, socket, roomCode } = useOnlineStore();
   const { animationsEnabled } = useSettingsStore();
-  const [showVoting, setShowVoting] = useState(false);
+  
+  const [showVoting, setShowVoting] = useState(isOnline);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const [hasVoted, setHasVoted] = useState(false);
+  const [votedCount, setVotedCount] = useState(0);
   
   const currentPlayer = players[currentPlayerIndex];
 
+  // For online mode, the local player's ID is their name for now (or their socket ID).
+  // Actually, online store tracks local player name but we might not have the ID easily?
+  // Let's assume currentPlayer in online mode doesn't matter for "pass to next player".
+  // The local player just picks from the players list.
+  // Wait, players list has IDs. Does the client know their own ID?
+  // Yes, `useOnlineStore().myPlayerId` matches one of the players.
+  // Let's find the local player:
+  const localPlayer = isOnline ? players.find(p => p.id === useOnlineStore.getState().myPlayerId) : currentPlayer;
+
+  useEffect(() => {
+    if (isOnline && socket) {
+      const handlePlayerVoted = () => setVotedCount(c => c + 1);
+      const handleVotingComplete = (data: any) => {
+        useGameStore.setState({
+          votes: data.votes,
+          imposters: data.imposters,
+          secretWord: data.secretWord,
+          phase: 'RESULTS'
+        });
+      };
+      
+      socket.on('player-voted', handlePlayerVoted);
+      socket.on('voting-complete', handleVotingComplete);
+      return () => {
+        socket.off('player-voted', handlePlayerVoted);
+        socket.off('voting-complete', handleVotingComplete);
+      };
+    }
+  }, [isOnline, socket]);
+
   const handleVote = () => {
-    if (!selectedPlayer) return;
+    if (!selectedPlayer || !localPlayer) return;
     audioManager.playVote();
-    useGameStore.setState(state => ({
-      votes: { ...state.votes, [currentPlayer.id]: selectedPlayer }
-    }));
     
-    setShowVoting(false);
-    setSelectedPlayer(null);
-    
-    if (currentPlayerIndex < players.length - 1) {
-      useGameStore.setState({ currentPlayerIndex: currentPlayerIndex + 1 });
+    if (isOnline && socket) {
+      setHasVoted(true);
+      socket.emit('submit-vote', { roomCode, voterId: localPlayer.id, targetId: selectedPlayer });
     } else {
-      setPhase('RESULTS');
+      useGameStore.setState(state => ({
+        votes: { ...state.votes, [localPlayer.id]: selectedPlayer }
+      }));
+      
+      setShowVoting(false);
+      setSelectedPlayer(null);
+      
+      if (currentPlayerIndex < players.length - 1) {
+        useGameStore.setState({ currentPlayerIndex: currentPlayerIndex + 1 });
+      } else {
+        setPhase('RESULTS');
+      }
     }
   };
 
-  if (!currentPlayer) return null;
+  if (!localPlayer) return null;
 
   return (
     <div className="w-full max-w-md mx-auto flex flex-col items-center justify-center min-h-[90vh] py-8 space-y-8 z-10 relative">
       <AnimatePresence mode="wait">
-        {!showVoting ? (
+        {!showVoting && !hasVoted ? (
           <motion.div 
             key="handover"
             className="text-center space-y-8 w-full flex-1 flex flex-col justify-center"
@@ -45,15 +86,26 @@ export function Voting() {
           >
             <div className="space-y-2">
               <p className="text-xl text-[var(--color-text-muted)] font-medium tracking-widest uppercase">Pass the phone to</p>
-              <h2 className="text-5xl font-black text-[var(--color-text-main)] truncate px-4">{currentPlayer.name}</h2>
+              <h2 className="text-5xl font-black text-[var(--color-text-main)] truncate px-4">{localPlayer.name}</h2>
             </div>
             
             <button 
               onClick={() => { audioManager.playSelect(); setShowVoting(true); }}
               className="w-full mt-12 py-6 glass-panel hover:bg-[var(--color-surface-border)] text-[var(--color-text-main)] font-black rounded-2xl text-xl transition-all shadow-xl active:scale-[0.98] border border-[var(--color-surface-border)] hover:border-white/20 tracking-wider"
             >
-              I'M {currentPlayer.name.toUpperCase()}
+              I'M {localPlayer.name.toUpperCase()}
             </button>
+          </motion.div>
+        ) : hasVoted ? (
+          <motion.div 
+            key="waiting"
+            className="w-full flex-1 flex flex-col justify-center items-center text-center space-y-6"
+            initial={animationsEnabled ? { opacity: 0, y: 20 } : {}}
+            animate={animationsEnabled ? { opacity: 1, y: 0 } : {}}
+          >
+            <div className="w-16 h-16 border-4 border-[var(--color-brand-blue)] border-t-transparent rounded-full animate-spin"></div>
+            <h2 className="text-2xl font-black text-[var(--color-text-main)] uppercase tracking-widest">Waiting for Votes</h2>
+            <p className="text-[var(--color-text-muted)]">{votedCount} / {players.length} voted</p>
           </motion.div>
         ) : (
           <motion.div 
@@ -71,7 +123,7 @@ export function Voting() {
               </div>
               
               <div className="grid grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto pb-4 px-1">
-                {players.filter(p => p.id !== currentPlayer.id).map(p => (
+                {players.filter(p => p.id !== localPlayer.id).map(p => (
                   <button 
                     key={p.id}
                     onClick={() => { audioManager.playSelect(); setSelectedPlayer(p.id); }}
