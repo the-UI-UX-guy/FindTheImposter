@@ -1,4 +1,5 @@
-const { createRoom, joinRoom, getRoom, leaveRoom, kickPlayer, updateSettings, startGame } = require('./roomManager');
+const roomManager = require('./roomManager');
+const { createRoom, joinRoom, getRoom, leaveRoom, kickPlayer, updateSettings, startGame, handleDisconnect } = roomManager;
 
 function initSocketHandlers(io) {
   io.on('connection', (socket) => {
