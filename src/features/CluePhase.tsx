@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { useOnlineStore } from '../store/onlineStore';
 import { Play, Pause } from 'lucide-react';
 import { audioManager } from '../utils/audioManager';
 import { motion } from 'framer-motion';
@@ -40,8 +41,25 @@ export function CluePhase() {
     return () => clearInterval(interval);
   }, [isTimerRunning, timeLeft]);
 
+  useEffect(() => {
+    const socket = useOnlineStore.getState().socket;
+    const isOnline = useOnlineStore.getState().isOnline;
+    if (isOnline && socket) {
+      const handleFinishClues = () => setPhase('DISCUSSION');
+      socket.on('finish-clues', handleFinishClues);
+      return () => {
+        socket.off('finish-clues', handleFinishClues);
+      }
+    }
+  }, [setPhase]);
+
   const handleFinish = () => {
-    setPhase('DISCUSSION');
+    const { isOnline, socket, roomCode } = useOnlineStore.getState();
+    if (isOnline && socket) {
+      socket.emit('finish-clues', { roomCode });
+    } else {
+      setPhase('DISCUSSION');
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -110,12 +128,18 @@ export function CluePhase() {
         )}
       </div>
 
-      <button 
-        onClick={handleFinish}
-        className="w-full py-5 bg-[var(--color-surface-card)] hover:bg-[var(--color-surface-border)] text-[var(--color-text-main)] font-black rounded-2xl text-xl transition-all shadow-lg active:scale-[0.98] border border-[var(--color-surface-border)] tracking-widest mt-auto z-10"
-      >
-        FINISH CLUES
-      </button>
+      {(!useOnlineStore.getState().isOnline || useOnlineStore.getState().isHost) ? (
+        <button 
+          onClick={handleFinish}
+          className="w-full py-5 bg-[var(--color-surface-card)] hover:bg-[var(--color-surface-border)] text-[var(--color-text-main)] font-black rounded-2xl text-xl transition-all shadow-lg active:scale-[0.98] border border-[var(--color-surface-border)] tracking-widest mt-auto z-10"
+        >
+          FINISH CLUES
+        </button>
+      ) : (
+        <div className="w-full py-5 text-center text-[var(--color-text-muted)] font-bold text-sm tracking-widest mt-auto z-10">
+          WAITING FOR HOST TO FINISH CLUES
+        </div>
+      )}
     </div>
   );
 }

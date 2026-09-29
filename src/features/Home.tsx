@@ -8,7 +8,7 @@ export function Home() {
   const setPhase = useGameStore(state => state.setPhase);
   const { animationsEnabled } = useSettingsStore();
 
-  const handleAction = (phase: 'SETUP' | 'HOW_TO_PLAY' | 'SETTINGS') => {
+  const handleAction = (phase: 'SETUP' | 'HOW_TO_PLAY' | 'SETTINGS' | 'ONLINE_LANDING') => {
     audioManager.playSelect();
     setPhase(phase);
   };
@@ -65,16 +65,28 @@ export function Home() {
         animate={animationsEnabled ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.6, delay: 0.4 }}
       >
-        <button 
-          onClick={() => handleAction('SETUP')}
-          className="relative w-full py-5 bg-gradient-to-r from-[var(--color-brand-red)] to-[var(--color-brand-red-hover)] text-white font-black rounded-2xl text-xl transition-all shadow-lg hover:shadow-red-900/50 active:scale-[0.98] box-glow overflow-hidden group flex items-center justify-center space-x-2"
-        >
-          <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity" />
-          <span>PLAY NOW</span>
-          <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+        <div className="flex flex-col space-y-3 w-full">
+          <button 
+            onClick={() => handleAction('ONLINE_LANDING')}
+            className="relative w-full py-5 bg-gradient-to-r from-[var(--color-brand-blue)] to-[var(--color-brand-blue-hover)] text-white font-black rounded-2xl text-xl transition-all shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:shadow-[0_0_30px_rgba(59,130,246,0.5)] active:scale-[0.98] overflow-hidden group flex items-center justify-center space-x-2"
+          >
+            <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity" />
+            <span className="text-2xl">🌐</span>
+            <span>PLAY ONLINE</span>
+          </button>
+
+          <button 
+            onClick={() => handleAction('SETUP')}
+            className="relative w-full py-4 bg-gradient-to-r from-[var(--color-brand-red)] to-[var(--color-brand-red-hover)] text-white font-black rounded-2xl text-lg transition-all shadow-lg hover:shadow-red-900/50 active:scale-[0.98] box-glow overflow-hidden group flex items-center justify-center space-x-2"
+          >
+            <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity" />
+            <span className="text-xl">📱</span>
+            <span>PASS & PLAY</span>
+            <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
         
         <div className="flex space-x-3 w-full">
           <button 

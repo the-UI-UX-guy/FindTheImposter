@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { useOnlineStore } from '../store/onlineStore';
 import { audioManager } from '../utils/audioManager';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Skull, Shield } from 'lucide-react';
@@ -9,6 +10,22 @@ export function Results() {
   const { players, votes, secretWord, setPhase, imposters } = useGameStore();
   const { animationsEnabled } = useSettingsStore();
   const [step, setStep] = useState<0 | 1 | 2>(0);
+
+  // Listen for lobby return
+  useEffect(() => {
+    const { isOnline, socket } = useOnlineStore.getState();
+    if (isOnline && socket) {
+      const handleReturnToLobby = () => {
+        // Reset local game state completely so we're ready for a new game
+        useGameStore.getState().resetGame();
+        setPhase('ONLINE_LOBBY');
+      };
+      socket.on('return-to-lobby', handleReturnToLobby);
+      return () => {
+        socket.off('return-to-lobby', handleReturnToLobby);
+      };
+    }
+  }, [setPhase]);
 
   const results = useMemo(() => {
     const tally: Record<string, number> = {};
@@ -34,6 +51,8 @@ export function Results() {
   }, [votes, imposters]);
 
   const handleNext = () => {
+    const { isOnline, isHost, socket, roomCode } = useOnlineStore.getState();
+
     if (step === 0) {
       if (results.isImposterEliminated) {
         audioManager.playImposterReveal();
@@ -50,7 +69,13 @@ export function Results() {
         setStep(2); 
       }
     } else {
-      useGameStore.getState().resetGame();
+      if (isOnline) {
+        if (isHost && socket) {
+          socket.emit('return-to-lobby', { roomCode });
+        }
+      } else {
+        useGameStore.getState().resetGame();
+      }
     }
   };
 

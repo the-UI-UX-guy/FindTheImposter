@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
+import { useOnlineStore } from '../store/onlineStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { audioManager } from '../utils/audioManager';
@@ -7,14 +8,22 @@ import { Eye, EyeOff, Shield, Skull } from 'lucide-react';
 
 export function PlayerReveal() {
   const { players, currentPlayerIndex, secretWord, hintWord, selectedCategory, imposters, setPhase, settings } = useGameStore();
+  const { isOnline, privateRole, privateSecretWord, privateHintWord, selectedCategory: onlineCategory } = useOnlineStore();
   const { animationsEnabled } = useSettingsStore();
   
   const [revealed, setRevealed] = useState(false);
   const [isFlipping, setIsFlipping] = useState(false);
   const [showContent, setShowContent] = useState(false);
 
-  const currentPlayer = players[currentPlayerIndex];
-  const isImposter = imposters.includes(currentPlayer?.id);
+  // Online Mode Setup
+  const isImposter = isOnline ? privateRole === 'IMPOSTER' : imposters.includes(players[currentPlayerIndex]?.id);
+  const currentPlayerName = isOnline ? "Your" : players[currentPlayerIndex]?.name;
+  
+  const wordToShow = isOnline 
+    ? (isImposter ? privateHintWord : privateSecretWord)
+    : (isImposter ? hintWord : secretWord);
+
+  const categoryToShow = isOnline ? onlineCategory : selectedCategory;
 
   // When card is fully revealed, show the text content
   useEffect(() => {
@@ -50,16 +59,22 @@ export function PlayerReveal() {
       
       setTimeout(() => {
         setIsFlipping(false);
-        if (currentPlayerIndex < players.length - 1) {
-          useGameStore.setState({ currentPlayerIndex: currentPlayerIndex + 1 });
-        } else {
+        if (isOnline) {
+          // If online, everyone transitions to CLUE_INTRO at their own pace for now, 
+          // or we can wait for a server broadcast. For simplicity, just proceed locally.
           setPhase('CLUE_INTRO');
+        } else {
+          if (currentPlayerIndex < players.length - 1) {
+            useGameStore.setState({ currentPlayerIndex: currentPlayerIndex + 1 });
+          } else {
+            setPhase('CLUE_INTRO');
+          }
         }
       }, animationsEnabled ? 600 : 0);
     }
   };
 
-  if (!currentPlayer) return null;
+  if (!isOnline && (!players || players.length === 0)) return null;
 
   return (
     <div className="w-full max-w-md mx-auto flex flex-col items-center justify-center min-h-[85vh] relative z-10 px-4">
@@ -104,8 +119,10 @@ export function PlayerReveal() {
             <div className="flex-1 flex flex-col items-center justify-center space-y-6">
               <EyeOff size={48} className="text-[var(--color-text-muted)] opacity-50" />
               <div className="text-center space-y-2">
-                <p className="text-[var(--color-text-muted)] text-sm tracking-widest uppercase font-bold">Pass the phone to</p>
-                <h2 className="text-4xl font-black text-[var(--color-text-main)] truncate max-w-[250px]">{currentPlayer.name}</h2>
+                <p className="text-[var(--color-text-muted)] text-sm tracking-widest uppercase font-bold">
+                  {isOnline ? 'Find out your role' : 'Pass the phone to'}
+                </p>
+                <h2 className="text-4xl font-black text-[var(--color-text-main)] truncate max-w-[250px]">{currentPlayerName}</h2>
               </div>
             </div>
             
@@ -123,7 +140,7 @@ export function PlayerReveal() {
             }`}
           >
             <div className="text-center w-full mt-4">
-              <p className="text-[var(--color-text-muted)] font-bold tracking-widest uppercase text-sm mb-1">{currentPlayer.name}, you are</p>
+              <p className="text-[var(--color-text-muted)] font-bold tracking-widest uppercase text-sm mb-1">{currentPlayerName}, you are</p>
               
               <AnimatePresence>
                 {showContent && (
@@ -148,14 +165,14 @@ export function PlayerReveal() {
                           {settings.showCategoryToImposter && (
                             <div className="w-full text-center">
                               <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-widest mb-1">Category</p>
-                              <p className="text-lg font-bold text-violet-400 bg-violet-500/10 py-2 rounded-xl border border-violet-500/20">{selectedCategory}</p>
+                              <p className="text-lg font-bold text-violet-400 bg-violet-500/10 py-2 rounded-xl border border-violet-500/20">{categoryToShow}</p>
                             </div>
                           )}
                           
                           {settings.imposterHint && (
                             <div className="w-full text-center">
                               <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-widest mb-1">Related Word Hint</p>
-                              <p className="text-lg font-bold text-yellow-500 bg-yellow-500/10 py-2 rounded-xl border border-yellow-500/20">{hintWord}</p>
+                              <p className="text-lg font-bold text-yellow-500 bg-yellow-500/10 py-2 rounded-xl border border-yellow-500/20">{wordToShow}</p>
                             </div>
                           )}
                         </div>
@@ -168,7 +185,7 @@ export function PlayerReveal() {
                         </h2>
                         <div className="bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] w-full py-6 rounded-2xl shadow-inner">
                           <p className="text-[var(--color-text-muted)] text-sm mb-2 uppercase tracking-widest">The Secret Word is</p>
-                          <p className="text-4xl font-black text-[var(--color-text-main)] tracking-wider">{secretWord}</p>
+                          <p className="text-4xl font-black text-[var(--color-text-main)] tracking-wider">{wordToShow}</p>
                         </div>
                       </>
                     )}
@@ -186,20 +203,22 @@ export function PlayerReveal() {
               }`}
             >
               <Eye size={20} className={isImposter ? 'text-white' : 'text-[var(--color-text-muted)]'} />
-              <span>HIDE ROLE</span>
+              <span>{isOnline ? "I'M READY" : "HIDE ROLE"}</span>
             </button>
           </div>
         </motion.div>
       </div>
 
-      <div className="mt-8 flex space-x-2">
-        {players.map((_, i) => (
-          <div 
-            key={i} 
-            className={`w-2 h-2 rounded-full transition-all duration-300 ${i === currentPlayerIndex ? 'bg-[var(--color-text-main)] w-6' : 'bg-[var(--color-surface-border)]'}`}
-          />
-        ))}
-      </div>
+      {!isOnline && (
+        <div className="mt-8 flex space-x-2">
+          {players.map((_, i) => (
+            <div 
+              key={i} 
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${i === currentPlayerIndex ? 'bg-[var(--color-text-main)] w-6' : 'bg-[var(--color-surface-border)]'}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
