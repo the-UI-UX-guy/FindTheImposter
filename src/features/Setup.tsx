@@ -5,23 +5,97 @@ import { getRandomWordAndHint, CATEGORIES } from '../data/words';
 import { assignRoles } from '../utils/gameLogic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { audioManager } from '../utils/audioManager';
-import { Plus, X, Users, Clock, Lightbulb, UserX, UserPlus, Play } from 'lucide-react';
+import { Plus, X, Users, Clock, Lightbulb, UserX, UserPlus, Play, AlertCircle, ChevronDown, FolderOpen } from 'lucide-react';
+
+const CATEGORY_EMOJIS: Record<string, string> = {
+  'Animals': '🦁',
+  'Food': '🍕',
+  'Places': '🏙️',
+  'Movies': '🎬',
+  'Objects': '📦',
+  'Nature': '🌲',
+  'Sports': '⚽',
+  'Technology': '💻',
+  'Everyday Life': '☕',
+  'People': '👥'
+};
+
+function CustomSelect({ 
+  value, 
+  options, 
+  onChange 
+}: { 
+  value: string | number, 
+  options: { label: string, value: string | number }[], 
+  onChange: (val: any) => void
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedOption = options.find(o => o.value === value) || options[0];
+
+  return (
+    <div className="relative">
+      <button 
+        type="button"
+        onClick={() => { audioManager.playSelect(); setIsOpen(!isOpen); }}
+        className="bg-[var(--color-surface-bg)] text-[var(--color-text-main)] font-medium px-4 py-2 rounded-xl border border-[var(--color-surface-border)] flex items-center justify-between min-w-[120px] transition-all hover:border-white/20 active:scale-95 text-sm"
+      >
+        <span>{selectedOption.label}</span>
+        <ChevronDown size={14} className={`ml-2 text-[var(--color-text-muted)] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              className="absolute right-0 top-full mt-2 w-48 max-h-[220px] overflow-y-auto custom-scrollbar bg-[var(--color-surface-card)] backdrop-blur-xl rounded-xl border border-[var(--color-surface-border)] shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-50 flex flex-col py-1"
+            >
+              {options.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => { audioManager.playSelect(); onChange(opt.value); setIsOpen(false); }}
+                  className={`px-4 py-3 text-left transition-colors text-sm ${value === opt.value ? 'bg-[var(--color-brand-red)]/10 text-[var(--color-brand-red)] font-bold' : 'text-[var(--color-text-main)] hover:bg-[var(--color-surface-border)]'}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export function Setup() {
-  const { players, settings, setPlayers, updateSettings, setPhase } = useGameStore();
+  const { players, settings, setPlayers, updateSettings } = useGameStore();
   const { animationsEnabled } = useSettingsStore();
   const [newPlayerName, setNewPlayerName] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (message: string) => {
+    setToast(message);
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
+  };
 
   const addPlayer = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPlayerName.trim()) return;
     if (players.length >= 20) {
-      alert("Maximum 20 players allowed.");
+      showToast("Maximum 20 players allowed.");
       return;
     }
     if (players.some(p => p.name.toLowerCase() === newPlayerName.trim().toLowerCase())) {
-      alert("That player is already in the game.");
+      showToast("That player is already in the game.");
       return;
     }
     
@@ -43,12 +117,13 @@ export function Setup() {
     audioManager.playStartGame();
 
     const assignedPlayers = assignRoles(players, settings.imposterCount);
-    const { secretWord, hintWord } = getRandomWordAndHint(settings.category as any);
+    const { secretWord, hintWord, selectedCategory } = getRandomWordAndHint(settings.category as any);
     
     useGameStore.setState({
       players: assignedPlayers,
       secretWord,
       hintWord,
+      selectedCategory,
       imposters: assignedPlayers.filter(p => p.role === 'IMPOSTER').map(p => p.id),
       currentPlayerIndex: 0,
       phase: 'PLAYER_REVEAL'
@@ -73,18 +148,28 @@ export function Setup() {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto flex flex-col min-h-screen pb-28 pt-6 relative">
-      <div className="flex items-center justify-between mb-8 px-4">
+    <div className="w-full max-w-md mx-auto flex flex-col min-h-screen pb-28 relative">
+      
+      {/* TOAST NOTIFICATION */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed top-12 left-1/2 -translate-x-1/2 bg-[var(--color-brand-red)] text-white px-5 py-3 rounded-full shadow-[0_5px_30px_rgba(225,29,72,0.4)] z-50 flex items-center space-x-2 whitespace-nowrap border border-white/20"
+          >
+            <AlertCircle size={18} />
+            <span className="font-bold text-sm tracking-wide">{toast}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="flex items-center justify-center text-center mb-8 px-4">
         <div>
           <h2 className="text-3xl font-black text-[var(--color-text-main)] tracking-wide">CREATE GAME</h2>
           <p className="text-[var(--color-text-muted)] text-sm mt-1">Gather your crew.</p>
         </div>
-        <button 
-          onClick={() => { audioManager.playSelect(); setPhase('HOME'); }} 
-          className="w-10 h-10 rounded-full bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-white active:scale-95 transition-all"
-        >
-          <X size={20} />
-        </button>
       </div>
 
       <div className="space-y-6 px-4">
@@ -119,50 +204,52 @@ export function Setup() {
             </button>
           </form>
 
-          <div className="bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-4 min-h-[120px] shadow-lg">
-            <AnimatePresence mode="popLayout">
-              {players.length === 0 ? (
-                <motion.div 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex flex-col items-center justify-center h-full space-y-3 py-6 opacity-60"
-                >
-                  <UserPlus size={32} className="text-[var(--color-text-muted)]" />
-                  <p className="text-[var(--color-text-muted)] text-sm text-center">
-                    Add at least 3 players<br/>to start the game.
-                  </p>
-                </motion.div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  {players.map(p => (
-                    <motion.div 
-                      key={p.id}
-                      layout={animationsEnabled}
-                      initial={animationsEnabled ? { opacity: 0, scale: 0.8 } : {}}
-                      animate={animationsEnabled ? { opacity: 1, scale: 1 } : {}}
-                      exit={animationsEnabled ? { opacity: 0, scale: 0.8 } : {}}
-                      className="bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl p-2 pr-3 flex items-center justify-between group"
-                    >
-                      <div className="flex items-center space-x-2 overflow-hidden">
-                        <div className={`w-8 h-8 rounded-full ${getAvatarColor(p.name)} flex items-center justify-center text-white font-bold text-xs flex-shrink-0 shadow-sm`}>
-                          {p.name.substring(0, 2).toUpperCase()}
-                        </div>
-                        <span className="text-[var(--color-text-main)] font-medium truncate text-sm">
-                          {p.name}
-                        </span>
-                      </div>
-                      <button 
-                        onClick={() => removePlayer(p.id)} 
-                        className="text-[var(--color-text-muted)] hover:text-[var(--color-brand-red)] transition-colors p-1"
+          <div className="bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl shadow-lg flex flex-col">
+            <div className="p-4 min-h-[120px] max-h-[240px] overflow-y-auto custom-scrollbar">
+              <AnimatePresence mode="popLayout">
+                {players.length === 0 ? (
+                  <motion.div 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex flex-col items-center justify-center h-full space-y-3 py-6 opacity-60"
+                  >
+                    <UserPlus size={32} className="text-[var(--color-text-muted)]" />
+                    <p className="text-[var(--color-text-muted)] text-sm text-center">
+                      Add at least 3 players<br/>to start the game.
+                    </p>
+                  </motion.div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {players.map(p => (
+                      <motion.div 
+                        key={p.id}
+                        layout={animationsEnabled}
+                        initial={animationsEnabled ? { opacity: 0, scale: 0.8 } : {}}
+                        animate={animationsEnabled ? { opacity: 1, scale: 1 } : {}}
+                        exit={animationsEnabled ? { opacity: 0, scale: 0.8 } : {}}
+                        className="bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl p-2 pr-2 flex items-center justify-between group overflow-hidden"
                       >
-                        <X size={16} />
-                      </button>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </AnimatePresence>
+                        <div className="flex items-center space-x-2 overflow-hidden flex-1 min-w-0">
+                          <div className={`w-8 h-8 rounded-full ${getAvatarColor(p.name)} flex items-center justify-center text-white font-bold text-xs flex-shrink-0 shadow-sm`}>
+                            {p.name.substring(0, 2).toUpperCase()}
+                          </div>
+                          <span className="text-[var(--color-text-main)] font-medium truncate text-sm">
+                            {p.name}
+                          </span>
+                        </div>
+                        <button 
+                          onClick={() => removePlayer(p.id)} 
+                          className="text-[var(--color-text-muted)] hover:text-[var(--color-brand-red)] transition-colors p-1 flex-shrink-0 ml-1"
+                        >
+                          <X size={16} />
+                        </button>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </section>
 
@@ -180,14 +267,14 @@ export function Setup() {
                 <span className="text-[var(--color-text-main)] font-semibold block">Category</span>
                 <span className="text-[var(--color-text-muted)] text-xs">Word collection</span>
               </div>
-              <select 
+              <CustomSelect 
                 value={settings.category}
-                onChange={(e) => updateSettings({ category: e.target.value })}
-                className="bg-[var(--color-surface-bg)] text-[var(--color-text-main)] font-medium px-4 py-2 rounded-xl border border-[var(--color-surface-border)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-red)] appearance-none text-center min-w-[120px]"
-              >
-                <option value="RANDOM">🎲 Random</option>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+                onChange={(val) => updateSettings({ category: val })}
+                options={[
+                  { label: '🎲 Random', value: 'RANDOM' },
+                  ...CATEGORIES.map(c => ({ label: `${CATEGORY_EMOJIS[c] || '🏷️'} ${c}`, value: c }))
+                ]}
+              />
             </div>
 
             {/* Imposter Count */}
@@ -231,36 +318,62 @@ export function Setup() {
                   <span className="text-[var(--color-text-main)] font-semibold block">Round Timer</span>
                 </div>
               </div>
-              <select 
+              <CustomSelect 
                 value={settings.timerSeconds}
-                onChange={(e) => updateSettings({ timerSeconds: Number(e.target.value) })}
-                className="bg-[var(--color-surface-bg)] text-[var(--color-text-main)] font-medium px-4 py-2 rounded-xl border border-[var(--color-surface-border)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-red)] appearance-none text-center"
-              >
-                <option value={0}>Off</option>
-                <option value={60}>1 Min</option>
-                <option value={120}>2 Min</option>
-                <option value={180}>3 Min</option>
-                <option value={300}>5 Min</option>
-              </select>
+                onChange={(val) => updateSettings({ timerSeconds: Number(val) })}
+                options={[
+                  { label: 'Off', value: 0 },
+                  { label: '1 Min', value: 60 },
+                  { label: '2 Min', value: 120 },
+                  { label: '3 Min', value: 180 },
+                  { label: '5 Min', value: 300 }
+                ]}
+              />
             </div>
 
-            {/* Hint Toggle */}
-            <div className="bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-4 flex justify-between items-center shadow-md">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full bg-[var(--color-surface-bg)] flex items-center justify-center text-yellow-500 border border-[var(--color-surface-border)]">
-                  <Lightbulb size={18} />
+            {/* Hint Toggles Container */}
+            <div className="bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-4 shadow-md space-y-4">
+              
+              {/* Show Hint Word Toggle */}
+              <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-full bg-[var(--color-surface-bg)] flex items-center justify-center text-yellow-500 border border-[var(--color-surface-border)]">
+                    <Lightbulb size={18} />
+                  </div>
+                  <div>
+                    <span className="text-[var(--color-text-main)] font-semibold block">Show Hint Word</span>
+                    <span className="text-[var(--color-text-muted)] text-xs">Help the imposter survive</span>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[var(--color-text-main)] font-semibold block">Imposter Hint</span>
-                  <span className="text-[var(--color-text-muted)] text-xs">Help the imposter survive</span>
-                </div>
+                <button
+                  onClick={() => updateSettings({ imposterHint: !settings.imposterHint })}
+                  className={`w-14 h-8 rounded-full transition-colors relative border ${settings.imposterHint ? 'bg-[var(--color-brand-red)] border-[var(--color-brand-red)]' : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)]'}`}
+                >
+                  <div className={`absolute top-1 left-1 bg-white w-5 h-5 rounded-full transition-transform ${settings.imposterHint ? 'translate-x-6' : 'translate-x-0'}`} />
+                </button>
               </div>
-              <button
-                onClick={() => updateSettings({ imposterHint: !settings.imposterHint })}
-                className={`w-14 h-8 rounded-full transition-colors relative border ${settings.imposterHint ? 'bg-[var(--color-brand-red)] border-[var(--color-brand-red)]' : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)]'}`}
-              >
-                <div className={`absolute top-1 left-1 bg-white w-5 h-5 rounded-full transition-transform ${settings.imposterHint ? 'translate-x-6' : 'translate-x-0'}`} />
-              </button>
+
+              <div className="h-px bg-[var(--color-surface-border)] w-full opacity-50"></div>
+
+              {/* Show Category Toggle */}
+              <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-full bg-[var(--color-surface-bg)] flex items-center justify-center text-violet-500 border border-[var(--color-surface-border)]">
+                    <FolderOpen size={18} />
+                  </div>
+                  <div>
+                    <span className="text-[var(--color-text-main)] font-semibold block">Show Category</span>
+                    <span className="text-[var(--color-text-muted)] text-xs">Tell imposter the category</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => updateSettings({ showCategoryToImposter: !settings.showCategoryToImposter })}
+                  className={`w-14 h-8 rounded-full transition-colors relative border ${settings.showCategoryToImposter ? 'bg-[var(--color-brand-red)] border-[var(--color-brand-red)]' : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)]'}`}
+                >
+                  <div className={`absolute top-1 left-1 bg-white w-5 h-5 rounded-full transition-transform ${settings.showCategoryToImposter ? 'translate-x-6' : 'translate-x-0'}`} />
+                </button>
+              </div>
+              
             </div>
 
           </div>

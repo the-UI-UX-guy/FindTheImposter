@@ -1,32 +1,63 @@
-# React + TypeScript + Vite
+# FindTheImposter
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A React + TypeScript + Vite game project themed around the classic social deduction prompt: identifying the imposter.
 
-Currently, two official plugins are available:
+## Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+This app currently includes a landing screen with:
 
-## React Compiler
+- a bold IMPOSTER title
+- a start game action
+- a game modes section
+- a how to play section
+- a settings action
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The project is structured as a lightweight frontend app and is set up for rapid iteration as the game mechanics are expanded.
 
-## Expanding the Oxlint configuration
+## Tech Stack
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+- React 19
+- TypeScript
+- Vite
+- Tailwind CSS via the Vite plugin
+- Oxlint
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+## Getting Started
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+3. Build for production:
+   ```bash
+   npm run build
+   ```
+
+4. Preview the production build locally:
+   ```bash
+   npm run preview
+   ```
+
+## Project Structure
+
+```text
+src/
+  App.tsx        # Main game screen/layout
+  index.css      # Global styling
+  main.tsx       # App entry point
+public/
+  favicon.svg    # Default app favicon
+src/assets/
+  logo.png       # Project logo used in the app metadata
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Notes
+
+- The favicon has been updated to use the project logo asset stored in `src/assets/logo.png`.
+- The repository ignores generated and local files such as `node_modules`, build output, environment files, and coverage reports.

@@ -89,12 +89,9 @@ export function HowToPlay() {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto flex flex-col space-y-6 min-h-[80vh]">
-      <div className="flex items-center justify-between">
+    <div className="w-full max-w-md mx-auto flex flex-col space-y-6 min-h-[80vh] relative">
+      <div className="flex justify-center">
         <h2 className="text-3xl font-bold text-[var(--color-text-main)]">How To Play</h2>
-        <button onClick={() => setPhase('HOME')} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">
-          Back
-        </button>
       </div>
 
       <div className="flex-1 flex flex-col justify-center space-y-12">

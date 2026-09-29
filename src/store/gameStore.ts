@@ -8,10 +8,12 @@ const initialSettings = {
   timerSeconds: 0,
   category: 'RANDOM',
   imposterHint: false,
+  showCategoryToImposter: false,
 };
 
 export const useGameStore = create<GameState>((set) => ({
   phase: 'HOME',
+  previousPhase: null,
   players: [],
   settings: {
     ...initialSettings,
@@ -19,11 +21,12 @@ export const useGameStore = create<GameState>((set) => ({
   },
   secretWord: '',
   hintWord: '',
+  selectedCategory: '',
   imposters: [],
   currentPlayerIndex: 0,
   votes: {},
 
-  setPhase: (phase) => set({ phase }),
+  setPhase: (phase) => set((state) => ({ previousPhase: state.phase, phase })),
   
   setPlayers: (players) => set({ players }),
   
@@ -33,7 +36,9 @@ export const useGameStore = create<GameState>((set) => ({
 
   resetGame: () => set({
     phase: 'HOME',
+    previousPhase: null,
     secretWord: '',
+    selectedCategory: '',
     imposters: [],
     currentPlayerIndex: 0,
     votes: {},

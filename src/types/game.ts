@@ -24,6 +24,7 @@ export interface Player {
 
 export interface GameState {
   phase: GamePhase;
+  previousPhase: GamePhase | null;
   players: Player[];
   settings: {
     mode: GameMode;
@@ -32,9 +33,11 @@ export interface GameState {
     timerSeconds: number;
     category: string;
     imposterHint: boolean;
+    showCategoryToImposter: boolean;
   };
   secretWord: string;
   hintWord: string;
+  selectedCategory: string;
   imposters: string[]; // Player IDs
   currentPlayerIndex: number;
   votes: Record<string, string>; // Voter ID -> Voted For ID

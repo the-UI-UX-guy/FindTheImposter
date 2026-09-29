@@ -6,7 +6,7 @@ import { audioManager } from '../utils/audioManager';
 import { Eye, EyeOff, Shield, Skull } from 'lucide-react';
 
 export function PlayerReveal() {
-  const { players, currentPlayerIndex, secretWord, hintWord, imposters, setPhase, settings } = useGameStore();
+  const { players, currentPlayerIndex, secretWord, hintWord, selectedCategory, imposters, setPhase, settings } = useGameStore();
   const { animationsEnabled } = useSettingsStore();
   
   const [revealed, setRevealed] = useState(false);
@@ -135,21 +135,30 @@ export function PlayerReveal() {
                   >
                     {isImposter ? (
                       <>
-                        <Skull size={48} className="text-[var(--color-brand-red)] mb-4" />
-                        <h2 className="text-5xl font-black text-[var(--color-brand-red)] tracking-wide uppercase text-glow mb-6">
+                        <Skull size={40} className="text-[var(--color-brand-red)] mb-2" />
+                        <h2 className="text-4xl font-black text-[var(--color-brand-red)] tracking-wide uppercase text-glow mb-3">
                           THE IMPOSTER
                         </h2>
-                        <div className="bg-[var(--color-surface-bg)] border border-[var(--color-brand-red)]/30 w-full py-6 rounded-2xl">
-                          <p className="text-[var(--color-text-muted)]">You don't know the word.</p>
-                          <p className="text-[var(--color-text-main)] font-semibold mt-1">Blend in. Survive.</p>
+                        <div className="bg-[var(--color-surface-bg)] border border-[var(--color-brand-red)]/30 w-full py-4 rounded-2xl">
+                          <p className="text-[var(--color-text-muted)] text-sm">You don't know the word.</p>
+                          <p className="text-[var(--color-text-main)] font-semibold text-sm">Blend in. Survive.</p>
                         </div>
                         
-                        {settings.imposterHint && (
-                          <div className="mt-6 w-full text-center">
-                            <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-widest mb-2">Category Hint</p>
-                            <p className="text-xl font-bold text-yellow-500 bg-yellow-500/10 py-3 rounded-xl border border-yellow-500/20">{hintWord}</p>
-                          </div>
-                        )}
+                        <div className="w-full space-y-3 mt-4">
+                          {settings.showCategoryToImposter && (
+                            <div className="w-full text-center">
+                              <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-widest mb-1">Category</p>
+                              <p className="text-lg font-bold text-violet-400 bg-violet-500/10 py-2 rounded-xl border border-violet-500/20">{selectedCategory}</p>
+                            </div>
+                          )}
+                          
+                          {settings.imposterHint && (
+                            <div className="w-full text-center">
+                              <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-widest mb-1">Related Word Hint</p>
+                              <p className="text-lg font-bold text-yellow-500 bg-yellow-500/10 py-2 rounded-xl border border-yellow-500/20">{hintWord}</p>
+                            </div>
+                          )}
+                        </div>
                       </>
                     ) : (
                       <>

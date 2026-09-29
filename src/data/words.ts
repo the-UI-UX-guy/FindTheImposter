@@ -48,7 +48,7 @@ export const WORD_DATABASE: Record<Category, string[]> = {
   ]
 };
 
-export const getRandomWordAndHint = (category: Category | 'RANDOM'): { secretWord: string, hintWord: string } => {
+export const getRandomWordAndHint = (category: Category | 'RANDOM'): { secretWord: string, hintWord: string, selectedCategory: string } => {
   let selectedCategory: Category;
   if (category === 'RANDOM') {
     selectedCategory = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
@@ -66,5 +66,5 @@ export const getRandomWordAndHint = (category: Category | 'RANDOM'): { secretWor
     hintIndex = Math.floor(Math.random() * words.length);
   }
   
-  return { secretWord, hintWord: words[hintIndex] };
+  return { secretWord, hintWord: words[hintIndex], selectedCategory };
 };
